@@ -6,115 +6,88 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-
-filename = "./animals.mp3"
-
-start = time.time()
+print("capstone.py")
+filename = "./songs/animals.mp3"
 y, sr = librosa.load(filename, sr=22050)
-end = time.time()
-print("y, sr")
-print(y)
-print(sr)
-print("it took " + str(end-start))
 
-# chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+def get_similarity_matrix():
+	mfcc = librosa.feature.mfcc(y=y)
+	R = librosa.segment.recurrence_matrix(mfcc)
+	return R
 
-# bounds = librosa.segment.agglomerative(chroma, 8)
+def get_window(R):
+	duration = librosa.get_duration(y=y, sr=sr)
+	duration_per_column = duration / R.shape[0]
+	tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+	window_duration = (60 / tempo) * 16 # 16 beats
+	window = int(window_duration / duration_per_column)
+	return window
 
-# bound_times = librosa.frames_to_time(bounds, sr=sr)
+def get_average(R):
+	sum_trues = float(np.count_nonzero(R))
+	average = float(sum_trues / (R.shape[0]*R.shape[1]))
+	return average
 
-# print(bound_times)
-
-# plt.figure()
-
-# librosa.display.specshow(chroma, y_axis='chroma', x_axis='time')
-
-# plt.vlines(bound_times, 0, chroma.shape[0], color='linen', linestyle='--', linewidth=2, alpha=0.9, label='segmental boundaries')
-
-# plt.axis('tight')
-
-# plt.legend(frameon=True, shadow=True)
-
-# plt.title('Power spectrogram')
-
-# plt.tight_layout()
-
-# plt.show()
-
-mfcc = librosa.feature.mfcc(y=y)
-
-print("mfcc")
-print(mfcc)
-
-tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-
-print("tempo")
-print(tempo)
-
-R = librosa.segment.recurrence_matrix(mfcc)
-
-print("R")
-print(R)
-
-print("R.shape")
-print(R.shape)
-
-length = librosa.get_duration(y=y, sr=sr)
-print("length")
-print(length)
-
-eight_beats_length = 60 / tempo * 8
-
-length_per_col = length / R.shape[0]
-
-num_cols_per_eight_beats = int(eight_beats_length / length_per_col)
-
-print("num_cols_per_eight_beats")
-print(num_cols_per_eight_beats)
-
-counter = float(np.count_nonzero(R))
-print("count_nonzero")
-print(counter)
-
-global_average = float(counter / (R.shape[0]*R.shape[1]))
-print("global_average")
-print(global_average)
-
-def calculate_concentration(matrix, start, end):
-	count = np.count_nonzero(matrix[start:end, start:end])
-	num = float((end-start)*(end-start))
-	print("count", count, "num", num, "concentration", float(count/num))
+def get_concentration(matrix, r_start, r_end, c_start, c_end):
+	count = np.count_nonzero(matrix[r_start:r_end, c_start:c_end])
+	num = float((r_end-r_start)*(c_end-c_start))
 	return float(count/num)
 
-i = 1
-while i < int(R.shape[0]/num_cols_per_eight_beats):
-	start = int((i-1)*num_cols_per_eight_beats)
-	end = int(i*num_cols_per_eight_beats)
-	print("start: ", start, "end: ", end)
-	trial = calculate_concentration(R, start, end)
-	while (trial > global_average):
-		second_trial = calculate_concentration(R, start, end+num_cols_per_eight_beats)
-		# not the best way to compare, but it's fine for now
-		if (trial > second_trial*1.2):
-			#print("section changed", "start", str(start), "end", str(end))
-			break
-		i += 1
-		end += num_cols_per_eight_beats
-	i += 1
-	#print("trial " + str(i) + ": " + str(trial) + str(global_average < trial))
+def get_segments(R, window, average):
+	segments = []
+	r_start = 0 # TODO start from where the first count starts
+	c_start = 0
+	r_end = window
+	c_end = window
+	segments.append(r_start)
+	while r_end <= R.shape[0]:
+		conc = get_concentration(R, r_start, r_end, c_start, c_end)
+		if conc < average:
+			# it's a new section! 
+			segments.append(r_start)
+			r_start = c_start # this assumes a section is a square
+			r_end = c_end
+			c_start += window
+			c_end += window
+			continue
+		c_start += window
+		c_end += window
+	return segments
 
+def display(R):
+	plt.figure(figsize=(4, 4))
+	librosa.display.specshow(R, x_axis='time', y_axis='time')
+	plt.title('Similarity Matrix')
+	plt.tight_layout()
+	plt.show()
 
-	# the idea is to look at the concentration of trues in the section
-	# if increasing, still in the same segment
-	# if decreasing, previous stop was the 
-	# but also check if the concentration is "high enough", meaning it is a section with enough similarity
+def main():
+	print("get_similarity_matrix()")
+	R = get_similarity_matrix()
+	print(R)
+	
+	print("get_window(R)")
+	window = get_window(R)
+	print(window)
+	
+	print("get_average(R)")
+	average = get_average(R)
+	print(average)
 
+	print("get_segments(R, window, average)")
+	segments = get_segments(R, window, average)
+	print (segments)
 
+	length = librosa.get_duration(y=y, sr=sr)
+	length_per_col = length / R.shape[0]
+	for segment in segments:
+		print("new segment at", segment*length_per_col)
 
-# plt.figure()
+	print("display")
+	#display(R)
+	plt.figure(figsize=(8, 8))
+	librosa.display.specshow(R, x_axis='time', y_axis='time')
+	plt.title('Similarity Matrix')
+	plt.show()
 
-# librosa.display.specshow(R, x_axis='time', y_axis='time')
-
-# plt.title('Binary recurrence (symmetric)')
-
-# plt.show()
+main()
