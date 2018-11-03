@@ -7,12 +7,12 @@ import numpy as np
 import time
 
 print("capstone.py")
-filename = "./songs/animals.mp3"
+filename = "./music/animals.wav"
 y, sr = librosa.load(filename, sr=22050)
 
 def get_similarity_matrix():
 	#mfcc = librosa.feature.mfcc(y=y)
-	chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024, hop_length=256)
+	chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024*4, hop_length=256*4)
 	R = librosa.segment.recurrence_matrix(chroma)
 	return R
 
@@ -80,7 +80,7 @@ def get_segments(R, window, average):
 	return segments
 
 def display(R):
-	plt.figure(figsize=(8, 8))
+	plt.figure(figsize=(10, 10))
 	librosa.display.specshow(R, x_axis='time', y_axis='time')
 	plt.title('Similarity Matrix')
 	plt.show()
