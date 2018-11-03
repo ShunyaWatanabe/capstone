@@ -11,15 +11,16 @@ filename = "./songs/animals.mp3"
 y, sr = librosa.load(filename, sr=22050)
 
 def get_similarity_matrix():
-	mfcc = librosa.feature.mfcc(y=y)
-	R = librosa.segment.recurrence_matrix(mfcc)
+	#mfcc = librosa.feature.mfcc(y=y)
+	chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024, hop_length=256)
+	R = librosa.segment.recurrence_matrix(chroma)
 	return R
 
 def get_window(R):
 	duration = librosa.get_duration(y=y, sr=sr)
 	duration_per_column = duration / R.shape[0]
 	tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-	window_duration = (60 / tempo) * 16 # 16 beats
+	window_duration = (60 / tempo) * 8
 	window = int(window_duration / duration_per_column)
 	return window
 
@@ -40,43 +41,64 @@ def get_segments(R, window, average):
 	r_end = window
 	c_end = window
 	segments.append(r_start)
+	first = True
 	while r_end <= R.shape[0]:
 		conc = get_concentration(R, r_start, r_end, c_start, c_end)
 		if conc < average:
-			# it's a new section! 
-			segments.append(r_start)
-			r_start = c_start # this assumes a section is a square
-			r_end = c_end
-			c_start += window
-			c_end += window
-			continue
+			# need to align the first block, so if the first try gives a false alert, slide the window little by little
+			if first:
+				r_start += 5
+				c_start += 5
+				c_start += 5
+				c_end += 5
+				continue
+			# it might be a new section. let's double check
+			temp_start = r_start
+			temp_end = r_end
+			# we will try majority rule this time
+			max_counter = min((c_start - r_start)/window, 1)
+			counter = 1.0
+			while r_start < c_start:
+				# we slide the window upwards
+				r_start += window
+				r_end += window
+				conc = get_concentration(R, r_start, r_end, c_start, c_end)
+				if conc < average:
+					counter += 1.0
+			if float(counter/max_counter) > 0.75:
+				# new section! update everything
+				r_start = c_start
+				r_end = c_end
+				segments.append(r_start)
+			else:
+				# false alert. revert back 
+				r_start = temp_start
+				r_end = temp_end
+		first = False
 		c_start += window
 		c_end += window
 	return segments
 
 def display(R):
-	plt.figure(figsize=(4, 4))
+	plt.figure(figsize=(8, 8))
 	librosa.display.specshow(R, x_axis='time', y_axis='time')
 	plt.title('Similarity Matrix')
-	plt.tight_layout()
 	plt.show()
 
 def main():
 	print("get_similarity_matrix()")
 	R = get_similarity_matrix()
-	print(R)
+	print("R.shape[0]",R.shape[0])
 	
 	print("get_window(R)")
 	window = get_window(R)
-	print(window)
+	print("window", window)
 	
 	print("get_average(R)")
 	average = get_average(R)
-	print(average)
 
 	print("get_segments(R, window, average)")
 	segments = get_segments(R, window, average)
-	print (segments)
 
 	length = librosa.get_duration(y=y, sr=sr)
 	length_per_col = length / R.shape[0]
@@ -84,10 +106,6 @@ def main():
 		print("new segment at", segment*length_per_col)
 
 	print("display")
-	#display(R)
-	plt.figure(figsize=(8, 8))
-	librosa.display.specshow(R, x_axis='time', y_axis='time')
-	plt.title('Similarity Matrix')
-	plt.show()
+	display(R)
 
 main()
