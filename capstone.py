@@ -6,13 +6,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+frame_length = 2048*16
+hop_length = 512*8
+
 print("capstone.py")
-filename = "./songs/animals.mp3"
+filename = "./songs/WaitingForLove.mp3"
 y, sr = librosa.load(filename, sr=22050)
 
 def get_similarity_matrix():
 	#mfcc = librosa.feature.mfcc(y=y)
-	chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024, hop_length=256)
+	#chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=2048*8, hop_length=512*2)
+	#chroma = librosa.feature.rmse(y=y)
+	chroma = librosa.feature.rmse(y=y, frame_length=frame_length, hop_length=hop_length)
 	R = librosa.segment.recurrence_matrix(chroma)
 	return R
 
@@ -20,6 +25,7 @@ def get_window(R):
 	duration = librosa.get_duration(y=y, sr=sr)
 	duration_per_column = duration / R.shape[0]
 	tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+	print("tempo", tempo)
 	window_duration = (60 / tempo) * 8
 	window = int(window_duration / duration_per_column)
 	return window
@@ -81,7 +87,7 @@ def get_segments(R, window, average):
 
 def display(R):
 	plt.figure(figsize=(8, 8))
-	librosa.display.specshow(R, x_axis='time', y_axis='time')
+	librosa.display.specshow(R, x_axis='time', y_axis='time', hop_length=hop_length)
 	plt.title('Similarity Matrix')
 	plt.show()
 
@@ -103,7 +109,17 @@ def main():
 	length = librosa.get_duration(y=y, sr=sr)
 	length_per_col = length / R.shape[0]
 	for segment in segments:
-		print("new segment at", segment*length_per_col)
+		print(segment*length_per_col)
+	for segment in segments:
+		#print(segment*length_per_col)
+		minute = int(segment*length_per_col/60)
+		seconds = int(segment*length_per_col%60)
+		if (seconds/10 == 0):
+			print(str(minute)+ ":" + "0" + str(seconds))
+		else:
+			print(str(minute)+ ":" + str(seconds))
+		
+		
 
 	print("display")
 	display(R)
