@@ -18,7 +18,7 @@ from sklearn.preprocessing import StandardScaler
 filename = "./songs/WaitingForLove.mp3"
 y, sr = librosa.load(filename, sr=22050)
 
-rmse = librosa.feature.rmse(y=y, frame_length=2048*8, hop_length=512*4)
+rmse = librosa.feature.rmse(y=y, frame_length=22050*2, hop_length=22050)
 X = librosa.segment.recurrence_matrix(rmse)
 X = np.transpose(np.nonzero(X))
 

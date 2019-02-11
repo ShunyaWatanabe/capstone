@@ -15,16 +15,21 @@ from sklearn import metrics
 from sklearn.datasets.samples_generator import make_blobs
 from sklearn.preprocessing import StandardScaler
 
+frame_length = 2048*8
+hop_length = 512*8
+eps = 20
+min_samples = 160
+
 filename = "./songs/WaitingForLove.mp3"
 y, sr = librosa.load(filename, sr=22050)
 
-rmse = librosa.feature.rmse(y=y, frame_length=2048*8, hop_length=512*8)
+rmse = librosa.feature.rmse(y=y, frame_length=frame_length, hop_length=hop_length)
 X = librosa.segment.recurrence_matrix(rmse)
 print("number of points = ", np.count_nonzero(X));
 X = np.transpose(np.nonzero(X))
 
 # Compute DBSCAN
-db = DBSCAN(eps=60.0, min_samples=800).fit(X)
+db = DBSCAN(eps=eps, min_samples=min_samples).fit(X)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
 labels = db.labels_
@@ -48,13 +53,13 @@ for k, col in zip(unique_labels, colors):
 
     xy = X[class_member_mask & core_samples_mask]
     plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-             markeredgecolor='k', markersize=2, markeredgewidth=0.0)
+             markeredgecolor='k', markersize=4, markeredgewidth=0.0)
 
     xy = X[class_member_mask & ~core_samples_mask]
     plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-             markeredgecolor='k', markersize=1, markeredgewidth=0.0)
+             markeredgecolor='k', markersize=2, markeredgewidth=0.0)
 
-plt.title('Estimated number of clusters: %d' % n_clusters_)
+plt.title('Clustering using DBSCAN')
 plt.show()
 
 

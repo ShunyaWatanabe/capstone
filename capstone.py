@@ -6,16 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-frame_length = 2048*16
-hop_length = 512*8
+# frame_length = 2048*16
+# hop_length = 10335
+multiply = 2
+frame_length = 2048*multiply*8
+hop_length = 1024*multiply
 
 print("capstone.py")
-filename = "./songs/WaitingForLove.mp3"
+filename = "./songs/animals.mp3"
 y, sr = librosa.load(filename, sr=22050)
 
 def get_similarity_matrix():
 	#mfcc = librosa.feature.mfcc(y=y)
-	#chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=2048*8, hop_length=512*2)
+	#chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=frame_length, hop_length=hop_length)
 	#chroma = librosa.feature.rmse(y=y)
 	chroma = librosa.feature.rmse(y=y, frame_length=frame_length, hop_length=hop_length)
 	R = librosa.segment.recurrence_matrix(chroma)
@@ -85,43 +88,60 @@ def get_segments(R, window, average):
 		c_end += window
 	return segments
 
-def display(R):
-	plt.figure(figsize=(8, 8))
+def display(R, i):
+	plt.subplot(2, 2, i)
 	librosa.display.specshow(R, x_axis='time', y_axis='time', hop_length=hop_length)
-	plt.title('Similarity Matrix')
-	plt.show()
+	plt.title('hop length = ' + str(hop_length))
+
 
 def main():
-	print("get_similarity_matrix()")
-	R = get_similarity_matrix()
-	print("R.shape[0]",R.shape[0])
-	
-	print("get_window(R)")
-	window = get_window(R)
-	print("window", window)
-	
-	print("get_average(R)")
-	average = get_average(R)
+	global multiply, frame_length, hop_length
+	R_array = []
 
-	print("get_segments(R, window, average)")
-	segments = get_segments(R, window, average)
+	for i in range(1, 5):
 
-	length = librosa.get_duration(y=y, sr=sr)
-	length_per_col = length / R.shape[0]
-	for segment in segments:
-		print(segment*length_per_col)
-	for segment in segments:
-		#print(segment*length_per_col)
-		minute = int(segment*length_per_col/60)
-		seconds = int(segment*length_per_col%60)
-		if (seconds/10 == 0):
-			print(str(minute)+ ":" + "0" + str(seconds))
-		else:
-			print(str(minute)+ ":" + str(seconds))
+		print("get_similarity_matrix()")
+		R = get_similarity_matrix()
+		print("R.shape[0]",R.shape[0])
 		
+		'''
+		print("get_window(R)")
+		window = get_window(R)
+		print("window", window)
 		
+		print("get_average(R)")
+		average = get_average(R)
 
-	print("display")
-	display(R)
+		print("get_segments(R, window, average)")
+		segments = get_segments(R, window, average)
+
+		length = librosa.get_duration(y=y, sr=sr)
+		length_per_col = length / R.shape[0]
+		
+		for segment in segments:
+			print(segment*length_per_col)
+		for segment in segments:
+			#print(segment*length_per_col)
+			minute = int(segment*length_per_col/60)
+			seconds = int(segment*length_per_col%60)
+			if (seconds/10 == 0):
+				print(str(minute)+ ":" + "0" + str(seconds))
+			else:
+				print(str(minute)+ ":" + str(seconds))
+		'''
+		R_array.append(R)
+		multiply = multiply*2
+		#frame_length = 2048*multiply
+		hop_length = 1024*multiply
+
+	plt.figure(figsize=(8, 8))
+	for index, r in enumerate(R_array):
+		print("display", index+1)
+		display(r, index+1)
+	print("show")
+
+	#plt.suptitle('Similarity Matrix with different window size')
+	plt.tight_layout()
+	plt.show()
 
 main()
