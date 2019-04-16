@@ -1,0 +1,10 @@
+0:01 verse1
+0:17 build-up
+0:32 drop
+1:02 break
+1:17 verse2
+1:32 verse1
+1:47 verse3
+2:02 build-up
+2:32 drop
+3:02 end
