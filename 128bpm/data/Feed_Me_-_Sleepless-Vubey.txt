@@ -1,8 +1,0 @@
-0:00 intro
-0:22 verse
-1:22 drop
-2:22 break
-2:52 verse
-3:52 drop
-4:52 outro
-5:30 end

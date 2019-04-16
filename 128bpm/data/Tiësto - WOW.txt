@@ -1,9 +1,0 @@
-0:02 intro
-0:11 verse
-0:26 build-up
-0:41 drop
-1:11 break
-1:26 verse
-1:41 build-up
-1:56 drop
-2:26 end
