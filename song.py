@@ -2,21 +2,21 @@ from __future__ import print_function
 print("importing libraries...")
 from os import listdir
 import librosa
-import librosa.display
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
-import scipy as sp
 from scipy.signal import find_peaks
 from segment import Segment
+if False: # change to True for displaying
+	import librosa.display
+	import matplotlib.pyplot as plt
+	import matplotlib.gridspec as gridspec
+	import scipy as sp
 
 class Song:
 	def __init__(self, filename, data, bpm, frame_length, hop_length):
 		self.filename = filename
 		self.textfile = data
-		print(self.filename)
-		print(self.textfile)
 		self.y, self.sr = librosa.load(self.filename, sr=22050)
+		self.duration = librosa.get_duration(y=self.y, sr=self.sr)
 		self.bpm = bpm
 		self.beats = 32
 		self.frame_length = frame_length
@@ -117,7 +117,6 @@ class Song:
 		return times
 
 	def get_segments(self):
-		print(self.filename)
 		file = open(self.textfile, "r")
 		lines = file.readlines()
 		segments = []
@@ -127,7 +126,7 @@ class Song:
 			start = convert(line.split(" ")[0])
 			end = convert(lines[index+1].split(" ")[0])
 			bpm = 128
-			segment_type = line.split(" ")[1]
+			segment_type = line.split(" ")[1].replace("\n", "")
 			segments.append(Segment(self.filename, start, end, bpm, segment_type))
 		return segments
 
