@@ -5,20 +5,22 @@ import librosa
 import numpy as np
 from scipy.signal import find_peaks
 from segment import Segment
-if False: # change to True for displaying
+if True: # change to True for displaying
 	import librosa.display
 	import matplotlib.pyplot as plt
 	import matplotlib.gridspec as gridspec
 	import scipy as sp
 
 class Song:
-	def __init__(self, filename, data, bpm, frame_length, hop_length):
+	def __init__(self, filename, data, bpm, frame_length, hop_length, distance, prominence):
 		self.filename = filename
 		self.textfile = data
 		self.y, self.sr = librosa.load(self.filename, sr=22050)
 		self.duration = librosa.get_duration(y=self.y, sr=self.sr)
+		self.energy = librosa.feature.rmse(self.y, frame_length=frame_length, hop_length=hop_length).max()
 		self.bpm = bpm
 		self.beats = 32
+		self.key = self.get_key()
 		self.frame_length = frame_length
 		self.hop_length = hop_length
 		self.kernel_size = self.get_kernel_size()
@@ -28,7 +30,9 @@ class Song:
 		self.times = self.get_times()
 		self.segments = self.get_segments()
 		self.arr, self.arr_time = self.get_kernel_scores()
-		self.peaks, self.peak_values = self.get_peaks(self.arr, 15, 15)
+		self.distance = distance
+		self.prominence = prominence
+		#self.peaks, self.peak_values = self.get_peaks(self.arr)
 
 
 	def get_ssm(self): # self similarity matrix
@@ -95,7 +99,7 @@ class Song:
 		# find min points
 		# peaks, _ = find_peaks(arr, distance=int(15*self.sr/float(self.hop_length)), height=np.average(arr))
 
-		peaks, peak_values = self.get_peaks(arr, 15, 15)
+		peaks, peak_values = self.get_peaks(arr)
 
 		for peak in peaks:
 			plt.axvline(x=peak)
@@ -104,36 +108,47 @@ class Song:
 		plt.plot(np.zeros_like(arr), "--", color="gray")
 		plt.show()
 
-	def get_peaks(self, arr, distance, prominence):
-		peaks, _ = find_peaks(arr, distance=int(distance*self.sr/float(self.hop_length)), height=np.average(arr), prominence=prominence)
+	def get_peaks(self, arr):
+		peaks, _ = find_peaks(arr, distance=int(self.distance*self.sr/float(self.hop_length)), height=np.average(arr), prominence=self.prominence)
 		return peaks*self.hop_length/self.sr, np.take(arr, peaks) # peak indice and values
 
 	def get_times(self):
 		file = open(self.textfile, "r")
 		times = []
-		for line in file:
+		for index, line in enumerate(file):
+			if index == 0:
+				continue
 			times.append(convert(line.split(" ")[0]))
 		file.close()
 		return times
+
+	def get_key(self):
+		file = open(self.textfile, "r")
+		key = file.readline().split(" ")[1].rstrip()
+		file.close()
+		print(key)
+		return key
 
 	def get_segments(self):
 		file = open(self.textfile, "r")
 		lines = file.readlines()
 		segments = []
 		for index, line in enumerate(lines):
+			if index == 0:
+				continue
 			if index == len(lines)-1:
 				break
 			start = convert(line.split(" ")[0])
 			end = convert(lines[index+1].split(" ")[0])
 			bpm = 128
 			segment_type = line.split(" ")[1].replace("\n", "")
-			segments.append(Segment(self.filename, start, end, bpm, segment_type))
+			segments.append(Segment(self.filename, start, end, bpm, segment_type, self.energy))
 		return segments
 
 
-	def ROC(self, distance, prominence):
+	def ROC(self):
 		actual = set(self.times[1:len(self.times)-1])
-		predicted = set(self.get_peaks(self.arr, distance, prominence)[0].tolist())
+		predicted = set(self.get_peaks(self.arr)[0].tolist())
 		num_actual = len(actual)
 		num_predicted = len(predicted)
 		
@@ -154,7 +169,9 @@ class Song:
 
 		precision = float(true_positive)/(true_positive + false_positive)
 		recall = float(true_positive)/(true_positive + false_negative)
-		f1 = 2*(precision*recall)/(precision+recall)
+		f1 = 0
+		if not(precision == 0 and recall == 0):
+			f1 = 2*(precision*recall)/(precision+recall)
 
 		print("actual:", num_actual, "predicted:", num_predicted, "tp:", true_positive, 
 			"fp:",false_positive, "fn:", false_negative, "f1:", f1)

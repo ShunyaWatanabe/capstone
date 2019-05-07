@@ -1,14 +1,14 @@
 import librosa
 
 class Segment:
-	def __init__(self, filename, start, end, bpm, segment_type):
+	def __init__(self, filename, start, end, bpm, segment_type, energy):
 		self.song_title = filename
 		self.start = start
 		self.end = end
 		self.bpm = bpm
 		self.segment_type = segment_type
 		self.y, self.sr = librosa.load(filename, sr=22050, offset=start, duration=end-start)
-		self.energy = librosa.feature.rmse(self.y, frame_length=2048*4, hop_length=512*4).mean()
+		self.energy = librosa.feature.rmse(self.y, frame_length=2048*4, hop_length=512*4).mean()/energy
 		#self.key = self.get_key()
 
 	def is_harmonic(self, other):
